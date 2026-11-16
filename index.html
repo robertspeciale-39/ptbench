@@ -448,11 +448,11 @@ code { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--acce
 
 /* Topology */
 .topo-wrap { overflow-x: auto; }
-.topo { display: block; width: 100%; min-width: 620px; height: auto; }
+.topo { display: block; width: 100%; min-width: 520px; height: clamp(170px, 30dvh, 250px); }
 .topo .link { stroke: var(--line-strong); stroke-width: 2; }
 .topo .link.down { stroke: var(--danger); stroke-dasharray: 5 5; }
 .topo .dot { fill: var(--u1); } .topo .dot.down { fill: var(--bg); stroke: var(--danger); stroke-width: 2; }
-.topo .iflabel { font-family: var(--font-mono); font-size: 11px; fill: var(--text-2); }
+.topo .iflabel { font-family: var(--font-mono); font-size: 15px; fill: var(--text-2); }
 .topo .node { cursor: pointer; }
 .topo .node .hit { fill: transparent; }
 .topo .node .shape { fill: var(--bg); stroke: var(--text-2); stroke-width: 2; transition: stroke var(--dur-fast) var(--ease-out); }
@@ -460,16 +460,17 @@ code { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--acce
 .topo .node.net .shape, .topo .node.net .glyph { stroke: var(--primary); }
 .topo .node:hover .shape { stroke: var(--text-bright); }
 .topo .node.sel .shape { fill: var(--primary-soft); stroke: var(--accent); stroke-width: 3; }
-.topo .node text { font-family: var(--font-mono); font-size: 13px; font-weight: 600; fill: var(--text-bright); text-anchor: middle; }
-.topo .node .sub { font-size: 11px; font-weight: 400; fill: var(--text-2); }
+.topo .node text { font-family: var(--font-mono); font-size: 18px; font-weight: 600; fill: var(--text-bright); text-anchor: middle; }
+.topo .node .sub { font-size: 15px; font-weight: 400; fill: var(--text-2); }
 .topo .node:focus-visible { outline: none; } .topo .node:focus-visible .shape { stroke: var(--accent); stroke-width: 4; }
-.legend { font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--text-dim); letter-spacing: .04em; padding: 0 var(--sp-5) var(--sp-4); }
+.topo-wrap { padding: var(--sp-3) var(--sp-4) 0; }
+.legend { font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--text-dim); letter-spacing: .04em; padding: var(--sp-1) var(--sp-5) var(--sp-3); }
 
 /* Terminal */
 .devbar { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .term { background: color-mix(in srgb, var(--bg) 80%, transparent); cursor: text; }
 .term-log { font-family: var(--font-mono); font-size: var(--fs-sm); line-height: 1.5; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere;
-  height: 340px; overflow-y: auto; padding: var(--sp-4) var(--sp-5) 0; }
+  height: clamp(200px, calc(100dvh - 610px), 440px); overflow-y: auto; padding: var(--sp-4) var(--sp-5) 0; }
 .term-line { display: flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-5) var(--sp-3); font-family: var(--font-mono); font-size: var(--fs-sm); }
 .term-line label { color: var(--text-bright); white-space: pre; flex-shrink: 0; }
 .term-line input { flex: 1; min-width: 0; min-height: 44px; background: transparent; border: 0; outline: none; color: var(--text-bright); caret-color: var(--primary);
@@ -483,6 +484,7 @@ code { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--acce
   .side { position: static; max-height: none; }
   .side .panel-body { max-height: 46dvh; }
   .term-log { height: 300px; }
+  .topo { height: 210px; }
 }
 @media print { .term, .devbar, .side-foot, .seg { display: none !important; } }
 
@@ -598,7 +600,7 @@ code { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--acce
 
     <div class="bench-work">
       <section class="panel" aria-label="Network topology">
-        <div class="panel-hdr"><h2 class="panel-title">Topology</h2></div>
+        <h2 class="sr-only">Topology</h2>
         <div class="topo-wrap" id="topo"></div>
         <p class="legend">Select a device to open its command line. Solid dot = link up · hollow dot and dashed line = link down.</p>
       </section>
@@ -1953,7 +1955,10 @@ const SHAPE = {
   server: '<rect class="shape" x="-16" y="-24" width="32" height="46" rx="4"/><path class="glyph" d="M-8 -13H8M-8 -3H8M-8 7H8"/>'
 };
 function drawTopo() {
-  const net = world.net, D = net.devs; let s = '<svg class="topo" viewBox="0 0 800 380" role="group" aria-label="Network topology for ' + esc(lab.title) + '">';
+  const net = world.net, D = net.devs, xs = Object.values(D).map(d => d.x), ys = Object.values(D).map(d => d.y);
+  // crop the drawing to the devices so no space is spent on empty canvas
+  const vb = [Math.min(...xs) - 60, Math.min(...ys) - 34, Math.max(...xs) - Math.min(...xs) + 120, Math.max(...ys) - Math.min(...ys) + 100].join(' ');
+  let s = '<svg class="topo" viewBox="' + vb + '" role="group" aria-label="Network topology for ' + esc(lab.title) + '">';
   for (const [a, ai, b, bi] of net.links) {
     const A = D[a], B = D[b], upL = PTB.ifUp(net, a, ai), dx = B.x - A.x, dy = B.y - A.y, len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
     s += '<line class="link' + (upL ? '' : ' down') + '" x1="' + A.x + '" y1="' + A.y + '" x2="' + B.x + '" y2="' + B.y + '"><title>' + a + ' ' + short(ai) + ' to ' + b + ' ' + short(bi) + ': ' + (upL ? 'up' : 'down') + '</title></line>';
@@ -1966,7 +1971,7 @@ function drawTopo() {
   for (const d of Object.values(D)) {
     const host = PTB.isHost(d), ip = host ? (Object.values(d.ifs)[0].ip || (d.dhcpClient ? 'DHCP: none' : 'no IP')) : '';
     s += '<g class="node' + (host ? '' : ' net') + (d.name === cur ? ' sel' : '') + '" data-dev="' + d.name + '" transform="translate(' + d.x + ',' + d.y + ')" tabindex="0" role="button" aria-pressed="' + (d.name === cur) + '" aria-label="' + d.kind + ' ' + d.name + (ip ? ', ' + ip : '') + '. Open command line">' +
-      '<rect class="hit" x="-30" y="-28" width="60" height="72"/>' + SHAPE[d.kind] + '<text y="' + (d.kind === 'server' ? 40 : 38) + '">' + d.name + '</text>' + (ip ? '<text class="sub" y="' + (d.kind === 'server' ? 54 : 52) + '">' + ip + '</text>' : '') + '</g>';
+      '<rect class="hit" x="-34" y="-30" width="68" height="92"/>' + SHAPE[d.kind] + '<text y="' + (d.kind === 'server' ? 43 : 41) + '">' + d.name + '</text>' + (ip ? '<text class="sub" y="' + (d.kind === 'server' ? 59 : 57) + '">' + ip + '</text>' : '') + '</g>';
   }
   $('topo').innerHTML = s + '</svg>';
 }
